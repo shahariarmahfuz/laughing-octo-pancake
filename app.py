@@ -1,8 +1,13 @@
 from flask import Flask, request, jsonify, render_template
 import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import re
 from os import environ
+import time
 
 app = Flask(__name__)
 
@@ -19,27 +24,31 @@ def extract_m3u8():
         return jsonify({'error': 'URL is required'}), 400
 
     try:
-        response = requests.get(url)
-        response.raise_for_status()
+        # Selenium ব্যবহার করে ব্রাউজার সিমুলেট করা
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
 
-        # HTML পার্সিং
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        # m3u8 লিংক খুঁজুন
-        m3u8_links = []
-        for link in soup.find_all('a', href=True):
-            if '.m3u8' in link['href']:
-                m3u8_links.append(link['href'])
-
-        if m3u8_links:
-            return jsonify({'link': m3u8_links[0]})
-        else:
-            # খুঁজতে পাইনি, তবে আমরা আরও ডাইনামিক পদ্ধতি ব্যবহার করতে পারি
-            video_sources = re.findall(r'src=["\'](.*?\.m3u8)["\']', response.text)
-            if video_sources:
-                return jsonify({'link': video_sources[0]})
+        driver = webdriver.Chrome(service=ChromeService(), options=chrome_options)
+        driver.get(url)
         
-        return jsonify({'link': None})
+        # কিছু সময় অপেক্ষা করা যাতে পেজ সম্পূর্ণ লোড হয়
+        time.sleep(5)
+
+        # নেটওয়ার্ক ট্রাফিক থেকে m3u8 লিংক সংগ্রহ করার চেষ্টা করা
+        m3u8_link = None
+        for request in driver.requests:
+            if ".m3u8" in request.url:
+                m3u8_link = request.url
+                break
+
+        driver.quit()
+
+        if m3u8_link:
+            return jsonify({'link': m3u8_link})
+        else:
+            return jsonify({'link': None})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
