@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>m3u8 Link Extractor</title>
+</head>
+<body>
+    <h1>m3u8 Link Extractor</h1>
+    <form id="urlForm">
+        <label for="websiteUrl">Enter Website URL:</label>
+        <input type="text" id="websiteUrl" name="websiteUrl" required>
+        <button type="submit">Extract m3u8 Link</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('urlForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const url = document.getElementById('websiteUrl').value;
+            
+            const response = await fetch('/extract', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            
+            const data = await response.json();
+            document.getElementById('result').innerText = data.link || 'No m3u8 link found.';
+        });
+    </script>
+</body>
+</html>
